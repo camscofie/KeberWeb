@@ -546,6 +546,7 @@ body {
   height: 106 !important; */
 }
 #masthead .hgroup .support-text {
+  font-size: 20px;
   line-height: 1.2em;
   position: absolute;
   right: 0;
@@ -877,6 +878,7 @@ body.responsive.layout-full #page-wrapper .full-container {
   color: #ffffff;
 }
 .main-navigation ul li a {
+  font-size: large;
   padding: 20px 35px;
   line-height: 1em;
   -ms-box-sizing: border-box;

@@ -321,7 +321,7 @@ class ShortCodes
         else
             $linkURL = home_url("/?wpdmdl=".$params['id']);
         $target = isset($params['target'])?"target={$params['target']}":"";
-        $class = isset($params['class'])?"target={$params['class']}":"";
+        $class = isset($params['class'])?"class={$params['class']}":"";
         $id = isset($params['id'])?"target={$params['id']}":"";
         $linkLabel = isset($params['label']) && !empty($params['label'])?$params['label']:get_post_meta($params['id'], '__wpdm_link_label', true);
         $linkLabel = empty($linkLabel)?'Download '.get_the_title($params['id']):$linkLabel;

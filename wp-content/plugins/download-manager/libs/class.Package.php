@@ -238,7 +238,7 @@ class Package {
                 //$post_vars['download_link_popup'] = $post_vars['download_link'] = "<div class='panel panel-default terms-panel' style='margin: 0'><div class='panel-heading'>{$data['terms_title']}</div><div class='panel-body' style='max-height: 200px;overflow: auto'>{$data['terms_conditions']}</div><div class='panel-footer'><label class='eden-checkbox'><input type='checkbox' onclick='jQuery(\".download_footer_{$post_vars['ID']}\").slideToggle();'><span><i class='fas fa-check'></i></span> {$data['terms_check_label']}</label></div><div class='panel-footer download_footer_{$post_vars['ID']}' style='display: none'>{$post_vars['download_link']}</div></div>";
             }
 
-            $post_vars['download_link_extended'] = "<div class='panel panel-default terms-panel' style='margin: 0'><div class='panel-heading'>{$data['terms_title']}</div><div class='panel-body' style='max-height: 200px;overflow: auto'>{$data['terms_conditions']}</div><div class='panel-footer'><label><input type='checkbox' class='wpdm-checkbox' onclick='jQuery(\".download_footer_{$post_vars['ID']}\").slideToggle();'> {$data['terms_check_label']}</label></div><div class='panel-footer  download_footer_{$post_vars['ID']}' style='display:none;'>{$post_vars['download_link_extended']}</div></div>";
+            $post_vars['download_link_extended'] = "<div class='panel panel-default terms-panel' style='margin: 0'><div class='panel-heading'>{$data['terms_title']}</div><div class='panel-body' style='max-height: 200px;overflow: auto'>{$data['terms_conditions']}</div><div class='panel-footer'><label><input type='checkbox' class='wpdm-checkbox wpdm-lock-terms' data-target='.download_footer_{$post_vars['ID']}' > {$data['terms_check_label']}</label></div><div class='panel-footer  download_footer_{$post_vars['ID']}' style='display:none;'>{$post_vars['download_link_extended']}</div></div>"; // onclick='jQuery(\".download_footer_{$post_vars['ID']}\").slideToggle();'
 
 
         }
@@ -478,7 +478,7 @@ class Package {
 
         if(get_post_type($ID) !='wpdmpro') return false;
 
-        $size = get_post_meta($ID, '__wpdm_package_size', true);
+        $size = esc_attr(get_post_meta($ID, '__wpdm_package_size', true));
 
         if($size!="" && !$recalculate) return $size;
 
@@ -612,6 +612,7 @@ class Package {
             foreach ($cdata as $k => $v) {
                 $k = str_replace("__wpdm_", "", $k);
                 $data[$k] = maybe_unserialize($v[0]);
+                if(!is_array($data[$k])) $data[$k] = esc_attr($data[$k]);
             }}
 
         if(!isset($data['access']) || !is_array($data['access'])) $data['access'] = array();
@@ -914,7 +915,7 @@ class Package {
 
                 }
                 if($embed == 1)
-                    $data = "<div class='panel panel-default terms-panel' style='margin: 0'><div class='panel-heading'>{$package['terms_title']}</div><div class='panel-body' style='max-height: 200px;overflow: auto'>{$data['terms_conditions']}</div><div class='panel-footer'><label><input data-pid='{$package['ID']}' class='wpdm-checkbox terms_checkbox terms_checkbox_{$package['ID']}' type='checkbox' onclick='jQuery(\".download_footer_{$package['ID']}\").slideToggle();'> {$data['terms_check_label']}</label></div><div class='panel-footer  download_footer_{$package['ID']}' style='display:none;'>{$data}</div></div>";
+                    $data = "<div class='panel panel-default terms-panel' style='margin: 0'><div class='panel-heading'>{$package['terms_title']}</div><div class='panel-body' style='max-height: 200px;overflow: auto'>{$data['terms_conditions']}</div><div class='panel-footer'><label><input data-pid='{$package['ID']}' data-target='.download_footer_{$package['ID']}' class='wpdm-checkbox wpdm-lock-terms terms_checkbox terms_checkbox_{$package['ID']}' type='checkbox'> {$data['terms_check_label']}</label></div><div class='panel-footer  download_footer_{$package['ID']}' style='display:none;'>{$data}</div></div>"; // onclick='jQuery(\".download_footer_{$package['ID']}\").slideToggle();'
 
             }
 
@@ -947,7 +948,7 @@ class Package {
         $key = uniqid();
         $exp = array('use' => $usageLimit, 'expire' => time()+$expirePeriod);
         update_post_meta($ID, "__wpdmkey_".$key, $exp);
-        $_SESSION['_wpdm_unlocked_'.$ID] = 1;
+        Session::set( '__wpdm_unlocked_'.$ID , 1 );
         $download_url = self::getDownloadURL($ID, "_wpdmkey={$key}");
         return $download_url;
     }
@@ -959,11 +960,11 @@ class Package {
      * @return string
      */
     public static function getDownloadURL($ID, $ext = ''){
-        if(self::isLocked($ID) && !isset($_SESSION['_wpdm_unlocked_'.$ID])) return '#locked';
+        if(self::isLocked($ID) && !Session::get( '__wpdm_unlocked_'.$ID )) return '#locked';
         if ($ext) $ext = '&' . $ext;
         $permalink = get_permalink($ID);
         $sap = strpos($permalink, '?')?'&':'?';
-        return $permalink.$sap."wpdmdl={$ID}{$ext}";
+        return $permalink.$sap."wpdmdl={$ID}{$ext}&refresh=".uniqid().time();
     }
 
     public static function getMasterDownloadURL($ID){
@@ -1121,7 +1122,6 @@ class Package {
 
         // If need to re-process any data before fetch template
         $vars = apply_filters("wdm_before_fetch_template", $vars);
-
         foreach ($vars as $key => $value) {
             if(!is_array($value)) {
                 $keys[] = "[$key]";
@@ -1139,6 +1139,7 @@ class Package {
 
         //wp_reset_query();
         wp_reset_postdata();
+
 
         return @str_replace($keys, $values, @stripcslashes($template));
     }

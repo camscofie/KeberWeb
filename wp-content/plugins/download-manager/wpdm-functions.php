@@ -270,9 +270,7 @@ function wpdm_getlink()
         }
         $ret = json_decode($ret['body']);
         if($ret->success == 1){
-            $_SESSION['_wpdm_unlocked_'.$file['ID']] = 1;
-            update_post_meta($file['ID'], "__wpdmkey_".$key, 3);
-            $download_url = wpdm_download_url($file, "_wpdmkey={$key}");
+            $download_url = \WPDM\Package::expirableDownloadLink($file['ID'], 3, 10800);
             $data['downloadurl'] = $download_url;
         }
         else{
@@ -290,11 +288,7 @@ function wpdm_getlink()
             if ($_POST['social'] && isset($social[$_POST['social']]))
                 update_option($social[$_POST['social']], (int)get_option($social[$_POST['social']]) + 1);
 
-            $limit = apply_filters('wpdm_download_link_expiration_limit', 3, $file);
-            $limit = $limit <=0 ? 3:$limit;
-            update_post_meta($file['ID'], "__wpdmkey_".$key, $limit);
-            $_SESSION['_wpdm_unlocked_'.$file['ID']] = 1;
-            $data['downloadurl'] = wpdm_download_url($file, "_wpdmkey={$key}");
+            $data['downloadurl'] = \WPDM\Package::expirableDownloadLink($file['ID'], 3, 10800);
             $adata = apply_filters("wpdmgetlink", $data, $file);
             $data = is_array($adata) ? $adata : $data;
 
@@ -349,9 +343,8 @@ function wpdm_getlink()
     }
 
     if ($data['error'] == '') {
-        $_SESSION['_wpdm_unlocked_'.$file['ID']] = 1;
-        $data['downloadurl'] = wpdm_download_url($file, "_wpdmkey={$key}");
-    } // home_url('/?downloadkey='.md5($file['files']).'&file='.$id.$ux);
+        $data['downloadurl'] = \WPDM\Package::expirableDownloadLink($file['ID'], 3, 10800);
+    }
     $adata = apply_filters("wpdmgetlink", $data, $file);
     $data = is_array($adata) ? $adata : $data;
 
@@ -621,7 +614,7 @@ function wpdm_embed_category($params = array('id' => '', 'operator' => 'IN' , 'i
 
     $total = $packs->found_posts;
     $pages = ceil($total / $items_per_page);
-    $page = isset($_GET[$cpvar]) ? $_GET[$cpvar] : 1;
+    $page = isset($_GET[$cpvar]) ? (int)$_GET[$cpvar] : 1;
     $start = ($page - 1) * $items_per_page;
 
     if (!isset($paging) || $paging == 1) {
@@ -697,7 +690,7 @@ function wpdm_embed_category($params = array('id' => '', 'operator' => 'IN' , 'i
     $burl = $burl . $sap;
     if (isset($_GET['p']) && $_GET['p'] != '') $burl .= 'p=' . esc_attr($_GET['p']) . '&';
     if (isset($_GET['src']) && $_GET['src'] != '') $burl .= 'src=' . esc_attr($_GET['src']) . '&';
-    $orderby = isset($_GET['orderby']) ? $_GET['orderby'] : 'create_date';
+    $orderby = isset($_GET['orderby']) ? esc_attr($_GET['orderby']) : 'create_date';
     $order = ucfirst($order);
     $order_field = " " . __(ucwords(str_replace("_", " ", $order_field)),'download-manager');
     $ttitle = __('Title','download-manager');
@@ -1095,7 +1088,7 @@ function wpdm_view_countplus(){
     if(isset($_REQUEST['_nonce'])&&wp_verify_nonce($_REQUEST['_nonce'],"__wpdm_view_count")){
 
         $id = intval($_REQUEST['id']);
-        $views = get_post_meta($id, '__wpdm_view_count', true);
+        $views = (int)get_post_meta($id, '__wpdm_view_count', true);
         update_post_meta($id, '__wpdm_view_count', $views+1);
         echo $views+1;
         die();
@@ -1129,7 +1122,7 @@ function wpdm_install_addon(){
         include_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
         include_once ABSPATH . 'wp-admin/includes/plugin-install.php';
         $upgrader = new Plugin_Upgrader( new Plugin_Installer_Skin( compact('title', 'url', 'nonce', 'plugin', 'api') ) );
-        $plugin_dir = isset($_REQUEST['dirname'])?$_REQUEST['dirname']:false;
+        $plugin_dir = isset($_REQUEST['dirname'])?esc_attr($_REQUEST['dirname']):false;
         if($plugin_dir) {
             $plugin_data = wpdm_plugin_data($plugin_dir);
             $plugin_file = $plugin_data ? $plugin_data['plugin_index_file'] : false;
@@ -1436,6 +1429,16 @@ function wpdm_user_dashboard_url(){
     return $url;
 }
 
+function wpdm_registration_url(){
+    $id = get_option('__wpdm_register_url', 0);
+    if($id > 0) {
+        $url = get_permalink($id);
+
+    }
+    else $url = wp_registration_url();
+    return $url;
+}
+
 function wpdm_login_url($redirect = ''){
     $id = get_option('__wpdm_login_url', 0);
     if($id > 0) {
@@ -1708,4 +1711,9 @@ function wpdm_download_button_style($p = null, $pacakge_ID = null){
     $class =  "btn ".(isset($ui_button['color'])?$ui_button['color']:'btn-primary')." ".(isset($ui_button['size'])?$ui_button['size']:'');
     $class = apply_filters("wpdm_download_button_style", $class, $pacakge_ID);
     return $class;
+}
+
+function wpdm_hex2rgb($hex){
+    list($r, $g, $b) = sscanf($hex, "#%02x%02x%02x");
+    return "$r, $g, $b";
 }

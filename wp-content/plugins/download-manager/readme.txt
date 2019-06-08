@@ -1,9 +1,9 @@
 ﻿=== WordPress Download Manager ===
 Contributors: w3eden, codename065, shahriar0822, shimo16ab, shafayat-alam
 Donate link: 
-Tags: digital store, eshop, ecommerce, e-commerce, file management,  document management plugin, download manager, file manager, download monitor, download counter, password protection, download protection
+Tags: download manager, document management, file manager, digital store, ecommerce, document management plugin,  download monitor, download counter, password protection, download protection
 Requires at least: 3.4
-Tested up to: 5.0
+Tested up to: 5.2
 License: GPLv2 or later
  
   
@@ -157,6 +157,42 @@ Check download stats and get a push notification when someone downloads, install
 15. Quick Add Panel
 
 == Changelog ==
+
+= 2.9.96 =
+* Compatibility update for WordPress 5.2
+* Improved user dashboard area
+
+= 2.9.95 =
+* Fixed an issue with the captcha lock
+
+= 2.9.94 =
+* Sanitized user inputs with category shortcode
+
+= 2.9.93 =
+* Improved session management
+
+= 2.9.92 =
+* Fixed issued with the password reset form
+* Fixed the conflict with health check plugin
+
+= 2.9.91 =
+* Fixed an issue with email template edit
+* Improved UI settings
+* Fixed invalid input issue with package settings
+
+= 2.9.90 =
+* Fixed an issue with settings page tab load
+
+= 2.9.89 =
+* Fixed the issue with saving settings
+
+= 2.9.88 =
+* Compatibility update for WordPress 5.1
+
+= 2.9.87 =
+* Fixed an issue with wpdm_direct_link shortcode
+* Fixed an issue with session class namespace
+* Fixed an issue with signup form
 
 = 2.9.86 =
 * Fixed the issue with cache dir creation

@@ -96,6 +96,7 @@ $ui_button_sc = get_option('__wpdm_ui_download_button_sc');
             <tr>
                 <td valign="middle" title="Select Button Color">
                     <small>
+                    <label><input class="__wpdm_ui_download_button_color" <?php checked('btn-link', (isset($ui_button['color'])?$ui_button['color']:'')); ?> type="radio" value="btn-link" name="__wpdm_ui_download_button[color]"> None</label>
                     <label><input class="__wpdm_ui_download_button_color" <?php checked('btn-primary', (isset($ui_button['color'])?$ui_button['color']:'')); ?> type="radio" value="btn-primary" name="__wpdm_ui_download_button[color]"> Primary</label>
                     <label><input class="__wpdm_ui_download_button_color" <?php checked('btn-secondary', (isset($ui_button['color'])?$ui_button['color']:'')); ?> type="radio" value="btn-secondary" name="__wpdm_ui_download_button[color]"> Secondary</label>
                     <label><input class="__wpdm_ui_download_button_color" <?php checked('btn-info', (isset($ui_button['color'])?$ui_button['color']:'')); ?> type="radio" value="btn-info" name="__wpdm_ui_download_button[color]"> Info</label>
@@ -104,17 +105,18 @@ $ui_button_sc = get_option('__wpdm_ui_download_button_sc');
                     <label><input class="__wpdm_ui_download_button_color" <?php checked('btn-danger', (isset($ui_button['color'])?$ui_button['color']:'')); ?> type="radio" value="btn-danger" name="__wpdm_ui_download_button[color]"> Danger</label>
                     </small>
                 </td>
-                <td rowspan="2" valign="middle" align="center" style="width: 250px">
-                    <button id="__wpdm_ui_download_button" type="button" class="<?php echo wpdm_download_button_style(true); ?>"><?php _e("Download", "download-manager");  ?></button>
+                <td rowspan="2" valign="middle" align="center" style="width: 200px">
+                    <button id="__wpdm_ui_download_button" type="button" style="border-radius: <?php echo (isset($ui_button['borderradius'])?$ui_button['borderradius']:4);?>px" class="<?php echo wpdm_download_button_style(true); ?>"><?php _e("Download", "download-manager");  ?></button>
                 </td>
             </tr>
             <tr>
-                <td>
+                <td style="vertical-align: middle">
                     <small>
                         <label><input class="__wpdm_ui_download_button_size" <?php checked('btn-xs', (isset($ui_button['size'])?$ui_button['size']:'')); ?> type="radio" value="btn-xs" name="__wpdm_ui_download_button[size]"> Extra Small</label>
                         <label><input class="__wpdm_ui_download_button_size" <?php checked('btn-sm', (isset($ui_button['size'])?$ui_button['size']:'')); ?> type="radio" value="btn-sm" name="__wpdm_ui_download_button[size]"> Small</label>
                         <label><input class="__wpdm_ui_download_button_size" <?php checked('', (isset($ui_button['size'])?$ui_button['size']:'')); ?> type="radio" value="" name="__wpdm_ui_download_button[size]"> Regular</label>
                         <label><input class="__wpdm_ui_download_button_size" <?php checked('btn-lg', (isset($ui_button['size'])?$ui_button['size']:'')); ?> type="radio" value="btn-lg" name="__wpdm_ui_download_button[size]"> Large</label>
+                        <div style="width: 160px;float: right;" class="input-group input-group-sm"><div class="input-group-addon"><?php echo __( "Border Radius", "download-manager" ) ?>:</div><input min="0" max="999" id="__wpdm_ui_download_button_br"  name="__wpdm_ui_download_button[borderradius]" data-target="#__wpdm_ui_download_button" class="form-control" type="number" value="<?php echo (isset($ui_button['borderradius'])?$ui_button['borderradius']:4);?>" /></div>
                     </small>
                 </td>
             </tr>
@@ -122,8 +124,9 @@ $ui_button_sc = get_option('__wpdm_ui_download_button_sc');
                 <th colspan="2"><?php _e("Shortcode Page", "download-manager");  ?></th>
             </tr>
             <tr>
-                <td valign="middle" title="Select Button Color">
+                <td valign="middle" style="vertical-align: middle" title="Select Button Color">
                     <small>
+                        <label><input class="__wpdm_ui_download_button_sc_color" <?php checked('btn-link', (isset($ui_button_sc['color'])?$ui_button_sc['color']:'')); ?> type="radio" value="btn-link" name="__wpdm_ui_download_button_sc[color]"> None</label>
                         <label><input class="__wpdm_ui_download_button_sc_color" <?php checked('btn-primary', (isset($ui_button_sc['color'])?$ui_button_sc['color']:'')); ?> type="radio" value="btn-primary" name="__wpdm_ui_download_button_sc[color]"> Primary</label>
                         <label><input class="__wpdm_ui_download_button_sc_color" <?php checked('btn-secondary', (isset($ui_button_sc['color'])?$ui_button_sc['color']:'')); ?> type="radio" value="btn-secondary" name="__wpdm_ui_download_button_sc[color]"> Secondary</label>
                         <label><input class="__wpdm_ui_download_button_sc_color" <?php checked('btn-info', (isset($ui_button_sc['color'])?$ui_button_sc['color']:'')); ?> type="radio" value="btn-info" name="__wpdm_ui_download_button_sc[color]"> Info</label>
@@ -132,17 +135,18 @@ $ui_button_sc = get_option('__wpdm_ui_download_button_sc');
                         <label><input class="__wpdm_ui_download_button_sc_color" <?php checked('btn-danger', (isset($ui_button_sc['color'])?$ui_button_sc['color']:'')); ?> type="radio" value="btn-danger" name="__wpdm_ui_download_button_sc[color]"> Danger</label>
                     </small>
                 </td>
-                <td rowspan="2" valign="middle" align="center" style="width: 250px">
-                    <button id="__wpdm_ui_download_button_sc" type="button" class="<?php echo wpdm_download_button_style(); ?>"><?php _e("Download", "download-manager");  ?></button>
+                <td rowspan="2" valign="middle" align="center" style="width: 200px">
+                    <button id="__wpdm_ui_download_button_sc" type="button" class="<?php echo wpdm_download_button_style(); ?>"  style="border-radius: <?php echo (isset($ui_button_sc['borderradius'])?$ui_button_sc['borderradius']:4);?>px"><?php _e("Download", "download-manager");  ?></button>
                 </td>
             </tr>
             <tr>
-                <td>
+                <td valign="middle" style="vertical-align: middle">
                     <small>
                         <label><input class="__wpdm_ui_download_button_sc_size" <?php checked('btn-xs', (isset($ui_button_sc['size'])?$ui_button_sc['size']:'')); ?> type="radio" value="btn-xs" name="__wpdm_ui_download_button_sc[size]"> Extra Small</label>
                         <label><input class="__wpdm_ui_download_button_sc_size" <?php checked('btn-sm', (isset($ui_button_sc['size'])?$ui_button_sc['size']:'')); ?> type="radio" value="btn-sm" name="__wpdm_ui_download_button_sc[size]"> Small</label>
                         <label><input class="__wpdm_ui_download_button_sc_size" <?php checked('', (isset($ui_button_sc['size'])?$ui_button_sc['size']:'')); ?> type="radio" value="" name="__wpdm_ui_download_button_sc[size]"> Regular</label>
                         <label><input class="__wpdm_ui_download_button_sc_size" <?php checked('btn-lg', (isset($ui_button_sc['size'])?$ui_button_sc['size']:'')); ?> type="radio" value="btn-lg" name="__wpdm_ui_download_button_sc[size]"> Large</label>
+                        <div style="width: 160px;float: right;" class="input-group input-group-sm"><div class="input-group-addon"><?php echo __( "Border Radius", "download-manager" ) ?>:</div><input min="0" max="999" data-target="#__wpdm_ui_download_button_sc" id="__wpdm_ui_download_button_sc_br" class="form-control" type="number"  name="__wpdm_ui_download_button_sc[borderradius]" value="<?php echo (isset($ui_button_sc['borderradius'])?$ui_button_sc['borderradius']:4);?>" /></div>
                     </small>
                 </td>
             </tr>
@@ -221,6 +225,10 @@ $ui_button_sc = get_option('__wpdm_ui_download_button_sc');
 
         $('.__wpdm_ui_download_button_sc_color, .__wpdm_ui_download_button_sc_size').on('change', function () {
             $('#__wpdm_ui_download_button_sc').attr('class', 'btn '+ $('.__wpdm_ui_download_button_sc_color:checked').val() + ' ' + $('.__wpdm_ui_download_button_sc_size:checked').val());
+        });
+
+        $('#__wpdm_ui_download_button_br, #__wpdm_ui_download_button_sc_br').on('change', function () {
+            $($(this).data('target')).css('border-radius', $(this).val()+'px');
         });
 
     });

@@ -4,7 +4,7 @@ Plugin Name: Download Manager
 Plugin URI: https://www.wpdownloadmanager.com/purchases/
 Description: Manage, Protect and Track File Downloads from your WordPress site
 Author: W3 Eden
-Version: 2.9.86
+Version: 2.9.96
 Author URI: https://www.wpdownloadmanager.com/
 Text Domain: download-manager
 Domain Path: /languages
@@ -15,8 +15,8 @@ namespace WPDM;
 
 global $WPDM;
 
-if(!isset($_SESSION) && (!isset($_REQUEST['action']) || $_REQUEST['action'] !== 'edit-theme-plugin-file') && !strstr($_SERVER['REQUEST_URI'], 'wpdm-media/') && !isset($_REQUEST['wpdmdl']))
-    @session_start();
+//if(!isset($_SESSION) && (!isset($_REQUEST['action']) || $_REQUEST['action'] !== 'edit-theme-plugin-file') && !strstr($_SERVER['REQUEST_URI'], 'wpdm-media/') && !isset($_REQUEST['wpdmdl']) && !isset($_GET['health-check-troubleshoot-enable-plugin']))
+//    @session_start();
 
 
 
@@ -50,6 +50,17 @@ if(!defined('WPDM_TPL_DIR')) {
     define('WPDM_TPL_DIR', dirname(__FILE__) . '/tpls/');
 }
 
+if(!defined('WPDM_TPL_FALLBACK')) {
+    define('WPDM_TPL_FALLBACK', dirname(__FILE__) . '/tpls/');
+}
+
+if(!defined('NONCE_KEY')){
+    //To avoid warning when not defined
+    define('NONCE_SALT',       'Bm|_Ek@F|HdkA7)=alSJg5_<z-j-JmhK<l&*.d<J+/71?&7pL~XBXnF4jKz>{Apx');
+    /**
+     * Generate WordPress Security Keys and Salts from https://api.wordpress.org/secret-key/1.1/salt/ and place them in your wp-config.php
+     */
+}
 
 ini_set('upload_tmp_dir',UPLOAD_DIR.'/cache/');
 
@@ -60,7 +71,7 @@ class WordPressDownloadManager{
 
     function __construct(){
 
-        define('WPDM_Version','2.9.86');
+        define('WPDM_Version','2.9.96');
 
         register_activation_hook(__FILE__, array($this, 'Install'));
 
@@ -79,7 +90,7 @@ class WordPressDownloadManager{
 
         include(dirname(__FILE__)."/wpdm-core.php");
 
-        new \WPDM\libs\UserDashboard();
+        new \WPDM\UserDashboard();
         $this->apply = new \WPDM\libs\Apply();
         new \WPDM\admin\WordPressDownloadManagerAdmin();
         new \WPDM\libs\ShortCodes();
@@ -323,6 +334,11 @@ class WordPressDownloadManager{
      * @usage insert code in wp head
      */
     function wpHead(){
+        if(is_singular('wpdmpro'))
+            $ui_button = get_option('__wpdm_ui_download_button');
+        else
+            $ui_button = get_option('__wpdm_ui_download_button_sc');
+        $class =  ".btn.".(isset($ui_button['color'])?$ui_button['color']:'btn-primary').".".(isset($ui_button['size'])?$ui_button['size']:'');
         ?>
 
         <script>
@@ -332,6 +348,11 @@ class WordPressDownloadManager{
             var wpdm_ajax_url = '<?php echo admin_url('admin-ajax.php'); ?>';
             var wpdm_ajax_popup = '<?php echo get_option('__wpdm_ajax_popup', 0); ?>';
         </script>
+        <style>
+            .wpdm-download-link<?php echo $class; ?>{
+                border-radius: <?php echo (isset($ui_button['borderradius'])?$ui_button['borderradius']:4); ?>px;
+            }
+        </style>
 
 
         <?php

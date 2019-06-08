@@ -2,6 +2,9 @@
 
 namespace WPDM\libs;
 
+use WPDM\Session;
+use WPDM\TempStorage;
+
 class Apply {
 
     function __construct(){
@@ -9,7 +12,6 @@ class Apply {
         add_filter('wpdm_custom_data', array( $this, 'SR_CheckPackageAccess' ), 10, 2);
 
         add_action('publish_wpdmpro', array( $this, 'customPings' ));
-
 
         $this->AdminActions();
         $this->FrontendActions();
@@ -27,12 +29,11 @@ class Apply {
         add_action('init', array($this, 'register'));
         add_action('init', array($this, 'wpdmIframe'));
         add_action('wp', array($this, 'updateProfile'));
-        add_action('wp', array($this, 'Logout'));
+        add_action('init', array($this, 'Logout'));
         add_action('request', array($this, 'rssFeed'));
         add_filter( 'ajax_query_attachments_args', array($this, 'usersMediaQuery') );
         add_action( 'init', array($this, 'sfbAccess'));
-        remove_action('wp_head', 'wp_generator');
-        add_action( 'wp_head', array($this, 'addGenerator'), 9);
+        add_action( 'wp_head', array($this, 'addGenerator'), 9999);
         add_action( 'wp_head', array($this, 'googleFont'), 999999);
         add_filter('pre_get_posts', array($this, 'queryTag'));
         add_filter('the_excerpt_embed', array($this, 'oEmbed'));
@@ -43,6 +44,10 @@ class Apply {
 
     function AdminActions(){
         if(!is_admin()) return;
+
+        add_action("wp_ajax_nopriv_updatePassword", array($this, 'updatePassword'));
+        add_action("wp_ajax_nopriv_resetPassword", array($this, 'resetPassword'));
+
         add_action( 'admin_init', array($this, 'sfbAccess'));
         add_action('save_post', array( $this, 'dashboardPages' ));
         add_action( 'wp_ajax_wpdm_clear_stats', array($this, 'clearStats'));
@@ -113,31 +118,38 @@ class Apply {
         return $vars;
     }
 
+    /**
+     * Login function
+     */
 
-    function Login()
+    function login()
     {
+
         global $wp_query, $post, $wpdb;
         if (!isset($_POST['wpdm_login'])) return;
-        if(!isset($_SESSION['login_try'])) $_SESSION['login_try'] = 0;
 
-        $_SESSION['login_try'] = $_SESSION['login_try'] + 1;
-        if($_SESSION['login_try'] > 10) wp_die("Slow Down!");
+        $login_try = (int)Session::get('login_try');
+        $login_try++;
+        Session::set('login_try', $login_try);
 
-        unset($_SESSION['login_error']);
+        if($login_try > 10) wp_die("Slow Down!");
+
+        Session::clear('login_error');
         $creds = array();
         $creds['user_login'] = $_POST['wpdm_login']['log'];
         $creds['user_password'] = $_POST['wpdm_login']['pwd'];
         $creds['remember'] = isset($_POST['rememberme']) ? $_POST['rememberme'] : false;
         $user = wp_signon($creds, false);
-
         if (is_wp_error($user)) {
-            $_SESSION['login_error'] = $user->get_error_message();
+            Session::set('login_error', $user->get_error_message());
 
             if(wpdm_is_ajax()) die('failed');
 
             header("location: " . $_SERVER['HTTP_REFERER']);
             die();
         } else {
+            wp_set_auth_cookie($user->ID);
+            Session::set('login_try', 0);
             do_action('wp_login', $creds['user_login'], $user);
             if(wpdm_is_ajax()) die('success');
 
@@ -146,15 +158,16 @@ class Apply {
         }
     }
 
-    function Logout()
+    /**
+     * @usage Logout an user
+     */
+
+    function logout()
     {
 
-        if (get_query_var('adb_page') == 'logout' || get_query_var('udb_page') == 'logout') {
+        if (isset($_REQUEST['logout']) && wp_verify_nonce(wpdm_query_var('logout'), NONCE_KEY)) {
             wp_logout();
-            if(get_query_var('udb_page') == 'logout')
-                header("location: " . get_permalink(get_option('__wpdm_user_dashboard')));
-            else
-                header("location: " . get_permalink(get_option('__wpdm_author_dashboard')));
+            header("location: " . wpdm_login_url());
             die();
         }
     }
@@ -169,7 +182,7 @@ class Apply {
 
         $shortcode_params = \WPDM\libs\Crypt::Decrypt($_REQUEST['phash']);
 
-        if(!isset($_REQUEST['__reg_nonce']) || !wp_verify_nonce($_REQUEST['__reg_nonce'], NONCE_KEY)){
+        if(!isset($_REQUEST['__reg_nonce']) || !wp_verify_nonce($_REQUEST['__reg_nonce'], NONCE_KEY) || wpdm_query_var('user_email_confirm') != ''){
             Session::set('reg_error',  __( "Something is Wrong! Please refresh the page and try again" , "download-manager" ));
             if (wpdm_is_ajax()) { wp_send_json(array('success' => false, 'message' => 'Error: ' . Session::get('reg_error'))); die(); }
             header("location: " . $_POST['permalink']);
@@ -188,7 +201,7 @@ class Apply {
         extract($_POST['wpdm_reg']);
         $display_name = $first_name." ".$last_name;
 
-        $_SESSION['tmp_reg_info'] = $_POST['wpdm_reg'];
+        Session::set('tmp_reg_info', $_POST['wpdm_reg']);
         $user_id = username_exists($user_login);
         $loginurl = $_POST['permalink'];
         if ($user_login == '') {
@@ -196,7 +209,6 @@ class Apply {
             Session::set('reg_error',  __( "Username is Empty!" , "download-manager" ));
 
             if(wpdm_is_ajax()) { wp_send_json(array('success' => false, 'message' => 'Error: ' . Session::get('reg_error'))); die(); }
-
 
             header("location: " . $_POST['permalink']);
             die();
@@ -301,44 +313,111 @@ class Apply {
 
     }
 
+
+    function resetPassword(){
+        if(wpdm_query_var('__reset_pass')){
+
+            if ( empty( $_POST['user_login'] ) ) {
+                die('error');
+            } elseif ( strpos( $_POST['user_login'], '@' ) ) {
+                $user_data = get_user_by( 'email', trim( wp_unslash( $_POST['user_login'] ) ) );
+                if ( empty( $user_data ) )
+                    die('error');
+            } else {
+                $login = trim($_POST['user_login']);
+                $user_data = get_user_by('login', $login);
+            }
+            if(Session::get( '__reset_time' ) && time() - Session::get( '__reset_time' ) < 60){
+                echo "toosoon";
+                exit;
+            }
+            if(!is_object($user_data) || !isset($user_data->user_login)) die('error');
+            $user_login = $user_data->user_login;
+            $user_email = $user_data->user_email;
+            $key = get_password_reset_key( $user_data );
+
+
+
+            $reseturl = add_query_arg(array('action' => 'rp', 'key' => $key, 'login' => rawurlencode($user_login)), wpdm_login_url());
+
+            $params = array('reset_password' => $reseturl, 'to_email' => $user_email);
+
+            \WPDM\Email::send('password-reset', $params);
+            Session::set( '__reset_time' , time() );
+            echo 'ok';
+            exit;
+
+        }
+    }
+
+    function updatePassword(){
+        if(wpdm_query_var('__update_pass')){
+
+            if(wp_verify_nonce(wpdm_query_var('__update_pass'), NONCE_KEY)){
+                $pass = wpdm_query_var('password');
+                if($pass == '') die('error');
+                $user = Session::get('__up_user');
+                $user = maybe_unserialize($user);
+                if(is_object($user) && isset($user->ID)) {
+                    wp_set_current_user($user->ID, $user->user_login);
+                    wp_set_auth_cookie($user->ID);
+                    //do_action('wp_login', $user->user_login);
+                    wp_set_password($pass, $user->ID);
+                    //print_r($user);
+                    wp_send_json(array('success' => true, 'message' => ''));
+                } else wp_send_json(array('success' => false, 'message' => __('Session Expired! Please try again.', 'download-manager')));
+            }
+            else
+                wp_send_json(array('success' => false, 'message' => __('Session Expired! Please try again.', 'download-manager')));
+
+        }
+    }
+
     function updateProfile()
     {
         global $current_user;
 
-        if (isset($_POST['wpdm_profile']) && is_user_logged_in()) {
+        if (isset($_POST['wpdm_profile']) && is_user_logged_in() && wp_verify_nonce(wpdm_query_var('__wpdm_epnonce'), NONCE_KEY)) {
 
             $error = 0;
 
             $pfile_data['display_name'] = $_POST['wpdm_profile']['display_name'];
+            $pfile_data['description'] = $_POST['wpdm_profile']['description'];
+            $pfile_data['user_email'] = $_POST['wpdm_profile']['user_email'];
+
 
             if ($_POST['password'] != $_POST['cpassword']) {
-                $_SESSION['member_error'][] = 'Password not matched';
+                Session::set('member_error', 'Password not matched');
                 $error = 1;
             }
             if (!$error) {
                 $pfile_data['ID'] = $current_user->ID;
                 if ($_POST['password'] != '')
                     $pfile_data['user_pass'] = $_POST['password'];
+
                 wp_update_user($pfile_data);
 
                 update_user_meta($current_user->ID, 'payment_account', $_POST['payment_account']);
-                $_SESSION['member_success'] = 'Profile data updated successfully.';
+                Session::set( 'member_success' , 'Profile data updated successfully.' );
             }
 
             do_action("wpdm_update_profile");
 
             if(wpdm_is_ajax()){
+                ob_clean();
                 if($error == 1){
                     $msg['type'] = 'danger';
-                    $msg['msg'] = $_SESSION['member_error'];
-                    unset($_SESSION['member_error']);
-                    echo json_encode($msg);
+                    $msg['title'] = 'ERROR!';
+                    $msg['msg'] = Session::get( 'member_error' );
+                    Session::clear('member_error');
+                    wp_send_json($msg);
                     die();
                 } else {
                     $msg['type'] = 'success';
-                    $msg['msg'] = $_SESSION['member_success'];
-                    unset($_SESSION['member_success']);
-                    echo json_encode($msg);
+                    $msg['title'] = 'DONE!';
+                    $msg['msg'] = Session::get( 'member_success' );
+                    Session::clear('member_success');
+                    wp_send_json($msg);
                     die();
                 }
             }
@@ -390,12 +469,11 @@ class Apply {
         if (!isset($wp_query->query_vars['wpdmdl']) && !isset($_GET['wpdmdl'])) return;
         $id = isset($_GET['wpdmdl']) ? (int)$_GET['wpdmdl'] : (int)$wp_query->query_vars['wpdmdl'];
         if ($id <= 0) return;
-        $key = array_key_exists('_wpdmkey', $_GET) ? esc_attr($_GET['_wpdmkey']) : '';
+        $key = esc_attr(wpdm_query_var('_wpdmkey'));
         $key = $key == '' && array_key_exists('_wpdmkey', $wp_query->query_vars) ? $wp_query->query_vars['_wpdmkey'] : $key;
         $key = preg_replace("/[^_a-z|A-Z|0-9]/i", "", $key);
         $key = "__wpdmkey_".$key;
         $package = get_post($id, ARRAY_A);
-        $package['ID'] = $package['ID'];
         $package = array_merge($package, wpdm_custom_data($package['ID']));
         if (isset($package['files']))
             $package['files'] = maybe_unserialize($package['files']);
@@ -422,7 +500,11 @@ class Apply {
             }
 
 
-            $limit = $key ? (int)trim(get_post_meta($package['ID'], $key, true)) : 0;
+            //$limit = $key ? (int)trim(get_post_meta($package['ID'], $key, true)) : 0;
+
+            $xlimit = $key != '' ? get_post_meta($package['ID'], $key, true) : '';
+            $xlimit = maybe_unserialize($xlimit);
+            $limit = !is_array($xlimit)?(int)$xlimit:$xlimit['use'];
 
 
             if ($limit <= 0 && $key != '') delete_post_meta($package['ID'], $key);
@@ -585,7 +667,7 @@ class Apply {
             ?>
             <style>
                 <?php if(!in_array('google-font', $wpdmss)) { ?>
-                @import url('https://fonts.googleapis.com/css?family=Cantarell:400,700');
+                @import url('https://fonts.googleapis.com/css?family=Rubik:400,500');
                 <?php } ?>
 
 
@@ -606,9 +688,9 @@ class Apply {
                 .w3eden .wpdm_cart thead th,
                 .w3eden #csp .list-group-item,
                 .w3eden .modal-title {
-                    font-family: Cantarell, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+                    font-family: Rubik, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
                     text-transform: uppercase;
-                    font-weight: 700;
+                    font-weight: 500;
                 }
                 .w3eden #csp .list-group-item{
                     text-transform: unset;
@@ -621,23 +703,40 @@ class Apply {
 
     function uiColors(){
         $uicolors = maybe_unserialize(get_option('__wpdm_ui_colors', array()));
+        $primary = isset($uicolors['primary'])?$uicolors['primary']:'#4a8eff';
+        $secondary = isset($uicolors['secondary'])?$uicolors['secondary']:'#4a8eff';
+        $success = isset($uicolors['success'])?$uicolors['success']:'#18ce0f';
+        $info = isset($uicolors['info'])?$uicolors['info']:'#2CA8FF';
+        $warning = isset($uicolors['warning'])?$uicolors['warning']:'#f29e0f';
+        $danger = isset($uicolors['danger'])?$uicolors['danger']:'#ff5062';
+        $font = get_option('__wpdm_google_font', 'Rubik');
+        $font = $font?$font.',':'';
         ?>
         <style>
 
             :root{
-                --color-primary: <?php echo isset($uicolors['primary'])?$uicolors['primary']:'#4a8eff'; ?>;
+                --color-primary: <?php echo $primary; ?>;
+                --color-primary-rgb: <?php echo wpdm_hex2rgb($primary); ?>;
                 --color-primary-hover: <?php echo isset($uicolors['primary'])?$uicolors['primary_hover']:'#4a8eff'; ?>;
                 --color-primary-active: <?php echo isset($uicolors['primary'])?$uicolors['primary_active']:'#4a8eff'; ?>;
-                --color-success: <?php echo isset($uicolors['success'])?$uicolors['success']:'#4a8eff'; ?>;
+                --color-secondary: <?php echo $secondary; ?>;
+                --color-secondary-rgb: <?php echo wpdm_hex2rgb($secondary); ?>;
+                --color-secondary-hover: <?php echo isset($uicolors['secondary'])?$uicolors['secondary_hover']:'#4a8eff'; ?>;
+                --color-secondary-active: <?php echo isset($uicolors['secondary'])?$uicolors['secondary_active']:'#4a8eff'; ?>;
+                --color-success: <?php echo $success; ?>;
+                --color-success-rgb: <?php echo wpdm_hex2rgb($success); ?>;
                 --color-success-hover: <?php echo isset($uicolors['success_hover'])?$uicolors['success_hover']:'#4a8eff'; ?>;
                 --color-success-active: <?php echo isset($uicolors['success_active'])?$uicolors['success_active']:'#4a8eff'; ?>;
-                --color-info: <?php echo isset($uicolors['info'])?$uicolors['info']:'#2CA8FF'; ?>;
+                --color-info: <?php echo $info; ?>;
+                --color-info-rgb: <?php echo wpdm_hex2rgb($info); ?>;
                 --color-info-hover: <?php echo isset($uicolors['info_hover'])?$uicolors['info_hover']:'#2CA8FF'; ?>;
                 --color-info-active: <?php echo isset($uicolors['info_active'])?$uicolors['info_active']:'#2CA8FF'; ?>;
-                --color-warning: <?php echo isset($uicolors['warning'])?$uicolors['warning']:'orange'; ?>;
+                --color-warning: <?php echo $warning; ?>;
+                --color-warning-rgb: <?php echo wpdm_hex2rgb($warning); ?>;
                 --color-warning-hover: <?php echo isset($uicolors['warning_hover'])?$uicolors['warning_hover']:'orange'; ?>;
                 --color-warning-active: <?php echo isset($uicolors['warning_active'])?$uicolors['warning_active']:'orange'; ?>;
-                --color-danger: <?php echo isset($uicolors['danger'])?$uicolors['danger']:'#ff5062'; ?>;
+                --color-danger: <?php echo $danger; ?>;
+                --color-danger-rgb: <?php echo wpdm_hex2rgb($danger); ?>;
                 --color-danger-hover: <?php echo isset($uicolors['danger_hover'])?$uicolors['danger_hover']:'#ff5062'; ?>;
                 --color-danger-active: <?php echo isset($uicolors['danger_active'])?$uicolors['danger_active']:'#ff5062'; ?>;
                 --color-green: <?php echo isset($uicolors['green'])?$uicolors['green']:'#30b570'; ?>;
@@ -645,6 +744,7 @@ class Apply {
                 --color-purple: <?php echo isset($uicolors['purple'])?$uicolors['purple']:'#8557D3'; ?>;
                 --color-red: <?php echo isset($uicolors['red'])?$uicolors['red']:'#ff5062'; ?>;
                 --color-muted: rgba(69, 89, 122, 0.6);
+                --wpdm-font: <?php echo $font; ?> -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
             }
 
 

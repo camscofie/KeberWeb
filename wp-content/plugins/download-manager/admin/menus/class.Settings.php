@@ -2,6 +2,7 @@
 
 namespace WPDM\admin\menus;
 
+use WPDM\Session;
 
 class Settings
 {
@@ -9,7 +10,7 @@ class Settings
     function __construct()
     {
         add_action('admin_init', array($this, 'initiateSettings'));
-        add_action('wp_ajax_wdm_settings', array($this, 'loadSettingsPage'));
+        add_action('wp_ajax_wpdm_settings', array($this, 'loadSettingsPage'));
         add_action('admin_menu', array($this, 'menu'));
     }
 
@@ -250,7 +251,7 @@ class Settings
             delete_option('__wpdm_freeaddons');
             delete_option('__wpdm_core_update_check');
             delete_option('__wpdm_access_token');
-            unset($_SESSION['__wpdm_download_url']);
+            Session::clear('__wpdm_download_url');
             die('<script>location.href="edit.php?post_type=wpdmpro&page=settings&tab=plugin-update";</script>Refreshing...');
         }
 
@@ -261,7 +262,7 @@ class Settings
             delete_option('__wpdm_freeaddons');
             delete_option('__wpdm_core_update_check');
             delete_option('__wpdm_access_token');
-            unset($_SESSION['__wpdm_download_url']);
+            Session::clear('__wpdm_download_url');
             $access_token = wpdm_access_token();
             if($access_token != '') {
                 $purchased_items = remote_get('https://www.wpdownloadmanager.com/?wpdmppaction=getpurchaseditems&wpdm_access_token=' . $access_token);
